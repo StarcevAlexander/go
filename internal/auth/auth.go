@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"go-auth-project/internal/models"
+	"myapp/internal/models"
 )
 
 // JSONUserStorage реализует UserStorage для хранения в JSON

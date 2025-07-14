@@ -2,7 +2,7 @@ package storage
 
 import (
 	"encoding/json"
-	"go-auth-project/internal/models"
+	"myapp/internal/models"
 	"os"
 	"sync"
 )

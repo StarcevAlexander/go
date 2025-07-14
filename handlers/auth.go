@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"go-auth-project/internal/auth"
-	"go-auth-project/internal/models"
+	"myapp/internal/auth"
+	"myapp/internal/models"
 )
 
 type AuthHandler struct {

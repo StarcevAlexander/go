@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"go-auth-project/internal/models"
+	"myapp/internal/models"
 	"net/http"
 )
 

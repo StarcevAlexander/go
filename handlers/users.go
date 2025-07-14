@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"go-auth-project/dto/dto"
-	"go-auth-project/internal/auth"
-	"go-auth-project/internal/models"
+	"myapp/dto/dto"
+	"myapp/internal/auth"
+	"myapp/internal/models"
 	"net/http"
 )
 

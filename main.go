@@ -2,14 +2,14 @@ package main
 
 import (
 	"encoding/json"
-	"go-auth-project/internal/models"
-	"go-auth-project/internal/storage"
 	"log"
+	"myapp/internal/models"
+	"myapp/internal/storage"
 	"net/http"
 	"strconv"
 
-	"go-auth-project/handlers"
-	"go-auth-project/internal/auth"
+	"myapp/handlers"
+	"myapp/internal/auth"
 )
 
 func main() {

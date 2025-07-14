@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"go-auth-project/internal/models"
+	"myapp/internal/models"
 )
 
 type UserStorage interface {

@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"go-auth-project/internal/auth"
-	"go-auth-project/internal/storage"
+	"myapp/internal/auth"
+	"myapp/internal/storage"
 	"net/http"
 )
 
