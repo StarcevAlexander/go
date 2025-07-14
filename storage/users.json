@@ -1,0 +1,58 @@
+{
+  "1111": {
+    "id": "",
+    "login": "1111",
+    "password": "1111",
+    "name": "",
+    "filial": "",
+    "role": ""
+  },
+  "2222": {
+    "id": "2",
+    "login": "2222",
+    "password": "2222",
+    "name": "Иванов Иван",
+    "filial": "1",
+    "role": "user"
+  },
+  "3333": {
+    "id": "3",
+    "login": "3333",
+    "password": "3333",
+    "name": "Петрова Мария",
+    "filial": "1",
+    "role": "helper"
+  },
+  "4444": {
+    "id": "4",
+    "login": "4444",
+    "password": "4444",
+    "name": "Сидоров Алексей",
+    "filial": "4",
+    "role": "owner"
+  },
+  "5555": {
+    "id": "5",
+    "login": "5555",
+    "password": "5555",
+    "name": "Смирнова Ольга",
+    "filial": "1",
+    "role": "user"
+  },
+  "6666": {
+    "id": "2",
+    "login": "6666",
+    "password": "6666",
+    "name": "Иванов Иван",
+    "filial": "2",
+    "role": "user"
+  },
+  "7777": {
+    "id": "",
+    "login": "7777",
+    "password": "7777",
+    "name": "",
+    "filial": "",
+    "role": ""
+  }
+}
