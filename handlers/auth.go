@@ -112,6 +112,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.Status != models.StatusActive {
+		http.Error(w, "User account is not active", http.StatusForbidden)
+		return
+	}
+
 	response := struct {
 		Token string      `json:"token"`
 		User  models.User `json:"user"`
