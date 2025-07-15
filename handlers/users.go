@@ -5,7 +5,10 @@ import (
 	"myapp/dto/dto"
 	"myapp/internal/auth"
 	"myapp/internal/models"
+	"myapp/internal/storage"
+	"myapp/internal/utils"
 	"net/http"
+	"strconv"
 )
 
 type UserHandler struct {
@@ -42,17 +45,17 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		filteredUsers = allUsers
 
 	case models.RoleAdmin:
-		// Admin видит только свой филиал
+		// Admin видит только свой филиал и только НЕ удалённых пользователей
 		for _, u := range allUsers {
-			if u.Filial == user.Filial {
+			if u.Filial == user.Filial && u.Status != models.StatusDeleted {
 				filteredUsers = append(filteredUsers, u)
 			}
 		}
 
 	case models.RoleHelper:
-		// Helper видит только пользователей из своего филиала с ролью "user"
+		// Helper видит только пользователей из своего филиала с ролью "user" и статусом НЕ deleted
 		for _, u := range allUsers {
-			if u.Filial == user.Filial && u.Role == models.RoleUser {
+			if u.Filial == user.Filial && u.Role == models.RoleUser && u.Status != models.StatusDeleted {
 				filteredUsers = append(filteredUsers, u)
 			}
 		}
@@ -85,7 +88,86 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(dtos)
 	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
+	}
+}
+
+func (h *UserHandler) UpdateUser(writer http.ResponseWriter, request *http.Request) {
+
+}
+
+func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	// Получаем пользователя из контекста
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Определяем файл в зависимости от роли пользователя
+	var dataFile string
+	switch user.Role {
+	case models.RoleUser:
+		dataFile = "storage/user-data.json"
+	case models.RoleAdmin:
+		dataFile = "storage/admin-data.json"
+	case models.RoleTutor:
+		dataFile = "storage/tutor-data.json"
+	case models.RoleHelper:
+		dataFile = "storage/helper-data.json"
+	default:
+		http.Error(w, "Forbidden: unknown role", http.StatusForbidden)
+		return
+	}
+
+	// Загружаем данные из нужного файла
+	dataStorage := storage.NewDataStorage(dataFile)
+	data, err := dataStorage.LoadData()
+	if err != nil {
+		http.Error(w, "Failed to load data", http.StatusInternalServerError)
+		return
+	}
+
+	// Преобразуем "users" из интерфейса в []models.UserData
+	var users []models.UserData
+	if userDataList, ok := data["users"].([]interface{}); ok {
+		for _, u := range userDataList {
+			userMap := u.(map[string]interface{})
+			var userData models.UserData
+			err := json.Unmarshal(utils.ToJSON(userMap), &userData)
+			if err != nil {
+				http.Error(w, "Failed to parse user data", http.StatusInternalServerError)
+				return
+			}
+			users = append(users, userData)
+		}
+	}
+
+	// Конвертируем user.ID (string) в int
+	userIDInt, err := strconv.Atoi(user.ID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	// Ищем пользователя по ID
+	var foundUser *models.UserData
+	for _, u := range users {
+		if u.ID == userIDInt {
+			foundUser = &u
+			break
+		}
+	}
+
+	// Отправляем ответ
+	if foundUser != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(foundUser); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+	} else {
+		http.Error(w, "User not found", http.StatusNotFound)
 	}
 }
 
