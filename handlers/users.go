@@ -9,6 +9,7 @@ import (
 	"myapp/internal/utils"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type UserHandler struct {
@@ -168,6 +169,110 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		http.Error(w, "User not found", http.StatusNotFound)
+	}
+}
+
+func (h *UserHandler) GetModules(w http.ResponseWriter, r *http.Request) {
+	// Получаем пользователя из контекста
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Проверяем, является ли пользователь tutor
+	if user.Role != models.RoleTutor {
+		http.Error(w, "Forbidden: only tutors can access this resource", http.StatusForbidden)
+		return
+	}
+
+	// Ищем профиль текущего пользователя в tutor-data.json
+	tutorDataStorage := storage.NewDataStorage("storage/tutor-data.json")
+	tutorRawData, err := tutorDataStorage.LoadData()
+	if err != nil {
+		http.Error(w, "Failed to load tutor data", http.StatusInternalServerError)
+		return
+	}
+
+	var tutors []models.UserData
+	if userDataList, ok := tutorRawData["users"].([]interface{}); ok {
+		for _, u := range userDataList {
+			userMap := u.(map[string]interface{})
+			var userData models.UserData
+			err := json.Unmarshal(utils.ToJSON(userMap), &userData)
+			if err != nil {
+				http.Error(w, "Failed to parse tutor data", http.StatusInternalServerError)
+				return
+			}
+			tutors = append(tutors, userData)
+		}
+	}
+
+	// Конвертируем ID пользователя из string в int
+	userIDInt, err := strconv.Atoi(user.ID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	// Находим текущего пользователя среди tutors
+	var tutor *models.UserData
+	for _, t := range tutors {
+		if t.ID == userIDInt {
+			tutor = &t
+			break
+		}
+	}
+
+	if tutor == nil {
+		http.Error(w, "Tutor not found", http.StatusNotFound)
+		return
+	}
+
+	// Загружаем все модули из modules-description-links.json
+	moduleStorage := storage.NewDataStorage("storage/modules-description-links.json")
+	moduleRawData, err := moduleStorage.LoadData()
+	if err != nil {
+		http.Error(w, "Failed to load module data", http.StatusInternalServerError)
+		return
+	}
+
+	var allModules []models.Module
+	if moduleList, ok := moduleRawData["learningModules"].([]interface{}); ok {
+		for _, m := range moduleList {
+			moduleMap := m.(map[string]interface{})
+			var module models.Module
+			err := json.Unmarshal(utils.ToJSON(moduleMap), &module)
+			if err != nil {
+				http.Error(w, "Failed to parse module data", http.StatusInternalServerError)
+				return
+			}
+			allModules = append(allModules, module)
+		}
+	}
+
+	// Фильтруем модули — оставляем только те, что есть у тьютора и которые ещё не истекли
+	var resultModules []models.Module
+
+	now := time.Now().UnixMilli() // Текущее время в миллисекундах
+
+	// Создаём мапу для быстрого доступа к датам
+	tutorModuleMap := make(map[int]int64)
+	for _, info := range tutor.Modules {
+		tutorModuleMap[info.ModuleID] = info.Date
+	}
+
+	for _, module := range allModules {
+		expiration, exists := tutorModuleMap[module.ID]
+		if exists && expiration > now {
+			resultModules = append(resultModules, module)
+		}
+	}
+
+	// Отправляем результат
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resultModules); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 

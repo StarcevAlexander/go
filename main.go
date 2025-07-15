@@ -40,6 +40,7 @@ func main() {
 		r.Get("/users", userHandler.GetAllUsers)
 		r.Put("/users/{id}", userHandler.UpdateUser) // PUT /users/123
 		r.Get("/profile", userHandler.GetProfile)
+		r.Get("/modules", userHandler.GetModules)
 	})
 
 	log.Println("Server starting on :8080")
