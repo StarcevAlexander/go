@@ -230,7 +230,7 @@ func (h *UserHandler) GetModules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Загружаем все модули из modules-description-links.json
-	moduleStorage := storage.NewDataStorage("storage/modules-description-links.json")
+	moduleStorage := storage.NewDataStorage("storage/jsons/modules-description-links.json")
 	moduleRawData, err := moduleStorage.LoadData()
 	if err != nil {
 		http.Error(w, "Failed to load module data", http.StatusInternalServerError)
@@ -251,20 +251,19 @@ func (h *UserHandler) GetModules(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Фильтруем модули — оставляем только те, что есть у тьютора и которые ещё не истекли
-	var resultModules []models.Module
-
-	now := time.Now().UnixMilli() // Текущее время в миллисекундах
-
-	// Создаём мапу для быстрого доступа к датам
+	// Создаём мапу для быстрого поиска даты
+	now := time.Now().UnixMilli()
 	tutorModuleMap := make(map[int]int64)
 	for _, info := range tutor.Modules {
-		tutorModuleMap[info.ModuleID] = info.Date
+		if info.Date > now {
+			tutorModuleMap[info.Module] = info.Date
+		}
 	}
 
+	// Фильтруем модули
+	var resultModules []models.Module
 	for _, module := range allModules {
-		expiration, exists := tutorModuleMap[module.ID]
-		if exists && expiration > now {
+		if _, exists := tutorModuleMap[module.ID]; exists {
 			resultModules = append(resultModules, module)
 		}
 	}

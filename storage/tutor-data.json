@@ -1,7 +1,7 @@
 {
   "users": [
     {
-      "id": 7777,
+      "id": 1752563538740,
       "modules": [
         {
           "module": 1,
@@ -29,48 +29,6 @@
         {
           "url": "https://example.com/portfolio1",
           "type": "portfolio"
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "modules": [
-        {
-          "module": 1,
-          "date": 253370764800000
-        },
-        {
-          "module": 4,
-          "date": 1719000000000
-        }
-      ],
-      "name": "Мария Петрова",
-      "links": [
-        {
-          "url": "https://example.com/profile2",
-          "type": "profile"
-        },
-        {
-          "url": "https://social.com/user2",
-          "type": "social"
-        }
-      ]
-    },
-    {
-      "id": 3,
-      "name": "Алексей Сидоров",
-      "links": [
-        {
-          "url": "https://work.example.com/employee3",
-          "type": "work"
-        },
-        {
-          "url": "https://blog.example.com/user3",
-          "type": "blog"
-        },
-        {
-          "url": "https://social.com/user3",
-          "type": "social"
         }
       ]
     }

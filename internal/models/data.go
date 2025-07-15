@@ -6,13 +6,13 @@ type Link struct {
 }
 
 type ModuleInfo struct {
-	ModuleID int   `json:"module"`
-	Date     int64 `json:"date"`
+	Module int   `json:"module"` // ID модуля
+	Date   int64 `json:"date"`   // дата окончания доступа
 }
 
 type UserData struct {
 	ID      int          `json:"id"`
 	Name    string       `json:"name"`
 	Links   []Link       `json:"links"`
-	Modules []ModuleInfo `json:"modules,omitempty"`
+	Modules []ModuleInfo `json:"modules,omitempty"` // только у тьютора
 }
