@@ -17,7 +17,7 @@ func main() {
 	userStorage := auth.NewJSONUserStorage("storage/users.json")
 
 	// Инициализация сервиса аутентификации
-	authService := auth.NewAuthService(userStorage, "we-will-rock-you")
+	authService := auth.NewAuthService(userStorage, []byte("we-will-rock-you"))
 
 	// Создание обработчиков
 	authHandler := handlers.NewAuthHandler(authService)

@@ -1,11 +1,39 @@
 {
+  "101010": {
+    "id": "1752564045792",
+    "login": "101010",
+    "password": "101010",
+    "name": "Федорова Елена",
+    "filial": "1",
+    "role": "user",
+    "status": "deleted"
+  },
+  "11": {
+    "id": "1752565681096",
+    "login": "11",
+    "password": "11",
+    "name": "Федорова Елена",
+    "filial": "1",
+    "role": "user",
+    "status": ""
+  },
+  "111": {
+    "id": "1752565715433",
+    "login": "111",
+    "password": "11",
+    "name": "Федорова Елена",
+    "filial": "1",
+    "role": "user",
+    "status": "active"
+  },
   "1111": {
-    "id": "",
+    "id": "1",
     "login": "1111",
     "password": "1111",
-    "name": "",
-    "filial": "",
-    "role": ""
+    "name": "Администратор Системы",
+    "filial": "1",
+    "role": "admin",
+    "status": "frozen"
   },
   "2222": {
     "id": "2",
@@ -13,7 +41,8 @@
     "password": "2222",
     "name": "Иванов Иван",
     "filial": "1",
-    "role": "user"
+    "role": "user",
+    "status": "active"
   },
   "3333": {
     "id": "3",
@@ -21,15 +50,17 @@
     "password": "3333",
     "name": "Петрова Мария",
     "filial": "1",
-    "role": "helper"
+    "role": "helper",
+    "status": "active"
   },
   "4444": {
     "id": "4",
     "login": "4444",
     "password": "4444",
     "name": "Сидоров Алексей",
-    "filial": "4",
-    "role": "owner"
+    "filial": "1",
+    "role": "owner",
+    "status": "active"
   },
   "5555": {
     "id": "5",
@@ -37,22 +68,43 @@
     "password": "5555",
     "name": "Смирнова Ольга",
     "filial": "1",
-    "role": "user"
+    "role": "user",
+    "status": "active"
   },
   "6666": {
-    "id": "2",
+    "id": "6",
     "login": "6666",
     "password": "6666",
-    "name": "Иванов Иван",
+    "name": "Козлов Дмитрий",
     "filial": "2",
-    "role": "user"
+    "role": "user",
+    "status": "active"
   },
   "7777": {
-    "id": "",
+    "id": "7",
     "login": "7777",
     "password": "7777",
-    "name": "",
-    "filial": "",
-    "role": ""
+    "name": "Федорова Елена",
+    "filial": "3",
+    "role": "tutor",
+    "status": "active"
+  },
+  "8888": {
+    "id": "1752563538740",
+    "login": "8888",
+    "password": "8888",
+    "name": "Федорова Елена",
+    "filial": "3",
+    "role": "tutor",
+    "status": "active"
+  },
+  "9999": {
+    "id": "1752563796386",
+    "login": "9999",
+    "password": "9999",
+    "name": "Федорова Елена",
+    "filial": "3",
+    "role": "user",
+    "status": "active"
   }
 }

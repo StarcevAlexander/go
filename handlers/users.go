@@ -71,11 +71,13 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	var dtos []dto.UserResponse
 	for _, u := range filteredUsers {
 		dtos = append(dtos, dto.UserResponse{
-			ID:     u.ID,
-			Login:  u.Login,
-			Name:   u.Name,
-			Filial: u.Filial,
-			Role:   string(u.Role),
+			ID:       u.ID,
+			Login:    u.Login,
+			Password: u.Password,
+			Name:     u.Name,
+			Filial:   u.Filial,
+			Role:     u.Role,
+			Status:   u.Status,
 		})
 	}
 

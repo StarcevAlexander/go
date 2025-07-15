@@ -39,14 +39,14 @@ type UserStorage interface {
 // AuthService предоставляет методы аутентификации
 type AuthService struct {
 	UserStorage UserStorage
-	jwtSecret   string
+	jwtKey      []byte // Добавьте это поле
 }
 
 // NewAuthService создает новый экземпляр AuthService
-func NewAuthService(userStorage UserStorage, jwtSecret string) *AuthService {
+func NewAuthService(storage UserStorage, jwtKey []byte) *AuthService {
 	return &AuthService{
-		UserStorage: userStorage,
-		jwtSecret:   jwtSecret,
+		UserStorage: storage,
+		jwtKey:      jwtKey, // Инициализируем поле
 	}
 }
 
@@ -160,7 +160,7 @@ func (s *AuthService) Login(login, password string) (string, models.User, error)
 	return token, user, nil
 }
 
-// AuthMiddleware проверяет JWT токен
+// AuthMiddleware проверяет JWT токен и статус пользователя
 func (s *AuthService) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -176,16 +176,25 @@ func (s *AuthService) AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		tokenString := parts[1]
+		claims := &Claims{}
 
-		claims, err := s.validateToken(tokenString)
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return s.jwtKey, nil
+		})
+
 		if err != nil {
 			http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		userID, ok := claims["sub"].(string)
-		if !ok {
-			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		if !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		userID := claims.Subject
+		if userID == "" {
+			http.Error(w, "Invalid token claims: missing sub", http.StatusUnauthorized)
 			return
 		}
 
@@ -195,6 +204,10 @@ func (s *AuthService) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		if user.Status != models.StatusActive {
+			http.Error(w, "User is not active", http.StatusForbidden)
+			return
+		}
 		ctx := context.WithValue(r.Context(), "user", user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -216,14 +229,16 @@ func (s *AuthService) RoleMiddleware(requiredRole models.UserRole) func(http.Han
 
 // generateToken создает JWT токен
 func (s *AuthService) generateToken(userID, login string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":   userID,
-		"login": login,
-		"exp":   time.Now().Add(24 * time.Hour).Unix(),
-	})
+	claims := &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		},
+		Login: login,
+	}
 
-	// Убедитесь, что ключ преобразуется в []byte
-	return token.SignedString([]byte(s.jwtSecret))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(s.jwtKey)
 }
 
 func (s *AuthService) validateToken(tokenString string) (jwt.MapClaims, error) {
@@ -232,7 +247,7 @@ func (s *AuthService) validateToken(tokenString string) (jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(s.jwtSecret), nil
+		return s.jwtKey, nil
 	})
 
 	if err != nil {
