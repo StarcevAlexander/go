@@ -110,13 +110,15 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	var dataFile string
 	switch user.Role {
 	case models.RoleUser:
-		dataFile = "storage/user-data.json"
+		dataFile = "storage/jsons/user-data.json"
 	case models.RoleAdmin:
-		dataFile = "storage/admin-data.json"
+		dataFile = "storage/jsons/admin-data.json"
+	case models.RoleOwner:
+		dataFile = "storage/jsons/admin-data.json"
 	case models.RoleTutor:
-		dataFile = "storage/tutor-data.json"
+		dataFile = "storage/jsons/tutor-data.json"
 	case models.RoleHelper:
-		dataFile = "storage/helper-data.json"
+		dataFile = "storage/jsons/helper-data.json"
 	default:
 		http.Error(w, "Forbidden: unknown role", http.StatusForbidden)
 		return

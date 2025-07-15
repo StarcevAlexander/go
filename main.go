@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Инициализация хранилища
-	userStorage := auth.NewJSONUserStorage("storage/users.json")
+	userStorage := auth.NewJSONUserStorage("storage/jsons/users.json")
 
 	// Инициализация сервиса аутентификации
 	authService := auth.NewAuthService(userStorage, []byte("we-will-rock-you"))
