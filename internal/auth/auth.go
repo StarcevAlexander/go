@@ -19,13 +19,24 @@ import (
 type JSONUserStorage struct {
 	filePath string
 	mu       sync.Mutex
+	users    []models.User // Кэш пользователей в памяти
+}
+
+type usersFile struct {
+	Users []models.User `json:"users"`
 }
 
 // NewJSONUserStorage создает новое JSON хранилище пользователей
 func NewJSONUserStorage(filePath string) *JSONUserStorage {
-	return &JSONUserStorage{
+	storage := &JSONUserStorage{
 		filePath: filePath,
 	}
+	// Загружаем пользователей при инициализации
+	err := storage.loadUsers()
+	if err != nil {
+		return nil
+	}
+	return storage
 }
 
 // UserStorage определяет интерфейс для работы с пользователями
@@ -33,7 +44,8 @@ type UserStorage interface {
 	CreateUser(user models.User) error
 	GetUserByLogin(login string) (models.User, error)
 	GetUserByID(id string) (models.User, error)
-	GetAllUsers() (map[string]models.User, error)
+	GetAllUsers() ([]models.User, error)
+	SaveAllUsers(users []models.User) error
 }
 
 // AuthService предоставляет методы аутентификации
@@ -50,10 +62,42 @@ func NewAuthService(storage UserStorage, jwtKey []byte) *AuthService {
 	}
 }
 
-func (s *JSONUserStorage) GetAllUsers() (map[string]models.User, error) {
+func (s *JSONUserStorage) loadUsers() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.readUsers()
+
+	data, err := os.ReadFile(s.filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			s.users = []models.User{}
+			return nil
+		}
+		return err
+	}
+
+	var file usersFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return err
+	}
+
+	s.users = file.Users
+	return nil
+}
+
+func (s *JSONUserStorage) saveUsers() error {
+	data, err := json.MarshalIndent(usersFile{Users: s.users}, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(s.filePath, data, 0644)
+}
+
+// GetAllUsers возвращает всех пользователей
+func (s *JSONUserStorage) GetAllUsers() ([]models.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.users, nil
 }
 
 // CreateUser создает нового пользователя
@@ -61,13 +105,14 @@ func (s *JSONUserStorage) CreateUser(user models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	users, err := s.readUsers()
-	if err != nil {
-		return err
+	for _, u := range s.users {
+		if u.Login == user.Login {
+			return fmt.Errorf("user with login %s already exists", user.Login)
+		}
 	}
 
-	users[user.Login] = user
-	return s.writeUsers(users)
+	s.users = append(s.users, user)
+	return s.saveUsers()
 }
 
 // GetUserByLogin возвращает пользователя по логину
@@ -75,17 +120,13 @@ func (s *JSONUserStorage) GetUserByLogin(login string) (models.User, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	users, err := s.readUsers()
-	if err != nil {
-		return models.User{}, err
+	for _, user := range s.users {
+		if user.Login == login {
+			return user, nil
+		}
 	}
 
-	user, exists := users[login]
-	if !exists {
-		return models.User{}, os.ErrNotExist
-	}
-
-	return user, nil
+	return models.User{}, os.ErrNotExist
 }
 
 // GetUserByID возвращает пользователя по ID
@@ -93,12 +134,7 @@ func (s *JSONUserStorage) GetUserByID(id string) (models.User, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	users, err := s.readUsers()
-	if err != nil {
-		return models.User{}, err
-	}
-
-	for _, user := range users {
+	for _, user := range s.users {
 		if user.ID == id {
 			return user, nil
 		}
@@ -259,4 +295,13 @@ func (s *AuthService) validateToken(tokenString string) (jwt.MapClaims, error) {
 	}
 
 	return nil, errors.New("invalid token")
+}
+
+// SaveAllUsers сохраняет всех пользователей
+func (s *JSONUserStorage) SaveAllUsers(users []models.User) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.users = users
+	return s.saveUsers()
 }

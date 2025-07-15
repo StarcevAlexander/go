@@ -28,15 +28,12 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Получаем всех пользователей в виде map
-	allUsersMap, err := h.authService.UserStorage.GetAllUsers()
+	// Получаем всех пользователей (теперь это slice, а не map)
+	allUsers, err := h.authService.UserStorage.GetAllUsers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Преобразуем map в slice
-	allUsers := convertMapToSlice(allUsersMap)
 
 	var filteredUsers []models.User
 
@@ -77,7 +74,7 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		dtos = append(dtos, dto.UserResponse{
 			ID:       u.ID,
 			Login:    u.Login,
-			Password: u.Password,
+			Password: "********", // Маскируем пароль в ответе
 			Name:     u.Name,
 			Filial:   u.Filial,
 			Role:     u.Role,

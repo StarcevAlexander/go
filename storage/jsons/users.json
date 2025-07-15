@@ -1,110 +1,130 @@
 {
-  "1752564045792": {
-    "id": "1752564045792",
-    "login": "101010",
-    "password": "101010",
-    "name": "Федорова Елена",
-    "filial": "1",
-    "role": "user",
-    "status": "deleted"
-  },
-  "1752565681096": {
-    "id": "1752565681096",
-    "login": "11",
-    "password": "11",
-    "name": "Федорова Елена",
-    "filial": "1",
-    "role": "user",
-    "status": "frozen"
-  },
-  "1752565715433": {
-    "id": "1752565715433",
-    "login": "111",
-    "password": "11",
-    "name": "Федорова Елена",
-    "filial": "1",
-    "role": "user",
-    "status": "active"
-  },
-  "1752565715434": {
-    "id": "1752565715434",
-    "login": "1111",
-    "password": "1111",
-    "name": "Администратор Системы",
-    "filial": "1",
-    "role": "admin",
-    "status": "frozen"
-  },
-  "1752565715435": {
-    "id": "1752565715435",
-    "login": "2222",
-    "password": "2222",
-    "name": "Иванов Иван",
-    "filial": "1",
-    "role": "user",
-    "status": "active"
-  },
-  "1752565715436": {
-    "id": "1752565715436",
-    "login": "3333",
-    "password": "3333",
-    "name": "Петрова Мария",
-    "filial": "1",
-    "role": "helper",
-    "status": "active"
-  },
-  "1752565715437": {
-    "id": "1752565715437",
-    "login": "4444",
-    "password": "4444",
-    "name": "Сидоров Алексей",
-    "filial": "1",
-    "role": "owner",
-    "status": "active"
-  },
-  "1752565715438": {
-    "id": "1752565715438",
-    "login": "5555",
-    "password": "5555",
-    "name": "Смирнова Ольга",
-    "filial": "1",
-    "role": "user",
-    "status": "active"
-  },
-  "1752565715439": {
-    "id": "1752565715439",
-    "login": "6666",
-    "password": "6666",
-    "name": "Козлов Дмитрий",
-    "filial": "2",
-    "role": "user",
-    "status": "active"
-  },
-  "1752565715430": {
-    "id": "1752565715430",
-    "login": "7777",
-    "password": "7777",
-    "name": "Федорова Елена",
-    "filial": "3",
-    "role": "tutor",
-    "status": "active"
-  },
-  "1752563538740": {
-    "id": "1752563538740",
-    "login": "8888",
-    "password": "8888",
-    "name": "Федорова Елена",
-    "filial": "3",
-    "role": "tutor",
-    "status": "active"
-  },
-  "1752563796386": {
-    "id": "1752563796386",
-    "login": "9999",
-    "password": "9999",
-    "name": "Федорова Елена",
-    "filial": "3",
-    "role": "user",
-    "status": "active"
-  }
+  "users": [
+    {
+      "id": "1752564045792",
+      "login": "101010",
+      "password": "101010",
+      "name": "Федорова Елена",
+      "filial": "1",
+      "role": "user",
+      "status": "deleted"
+    },
+    {
+      "id": "1752565681096",
+      "login": "11",
+      "password": "11",
+      "name": "Федорова Елена",
+      "filial": "1",
+      "role": "user",
+      "status": "frozen"
+    },
+    {
+      "id": "1752565715433",
+      "login": "111",
+      "password": "11",
+      "name": "Федорова Елена",
+      "filial": "1",
+      "role": "user",
+      "status": "active"
+    },
+    {
+      "id": "1752565715434",
+      "login": "1111",
+      "password": "1111",
+      "name": "Администратор Системы",
+      "filial": "1",
+      "role": "admin",
+      "status": "frozen"
+    },
+    {
+      "id": "1752565715435",
+      "login": "2222",
+      "password": "2222",
+      "name": "Иванов Иван",
+      "filial": "1",
+      "role": "user",
+      "status": "active"
+    },
+    {
+      "id": "1752565715436",
+      "login": "3333",
+      "password": "3333",
+      "name": "Петрова Мария",
+      "filial": "1",
+      "role": "helper",
+      "status": "active"
+    },
+    {
+      "id": "1752565715437",
+      "login": "4444",
+      "password": "4444",
+      "name": "Сидоров Алексей",
+      "filial": "1",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": "1752565715438",
+      "login": "5555",
+      "password": "5555",
+      "name": "Смирнова Ольга",
+      "filial": "1",
+      "role": "user",
+      "status": "active"
+    },
+    {
+      "id": "1752565715439",
+      "login": "6666",
+      "password": "6666",
+      "name": "Козлов Дмитрий",
+      "filial": "2",
+      "role": "user",
+      "status": "active"
+    },
+    {
+      "id": "1752565715430",
+      "login": "7777",
+      "password": "7777",
+      "name": "Федорова Елена",
+      "filial": "3",
+      "role": "tutor",
+      "status": "active"
+    },
+    {
+      "id": "1752563538740",
+      "login": "8888",
+      "password": "8888",
+      "name": "Федорова Елена",
+      "filial": "3",
+      "role": "tutor",
+      "status": "active"
+    },
+    {
+      "id": "1752563796386",
+      "login": "9999",
+      "password": "9999",
+      "name": "Федорова Елена",
+      "filial": "3",
+      "role": "user",
+      "status": "active"
+    },
+    {
+      "id": "1752609047285",
+      "login": "88888",
+      "password": "88888",
+      "name": "Федорова Елена",
+      "filial": "1",
+      "role": "user",
+      "status": "active"
+    },
+    {
+      "id": "1752609062898",
+      "login": "88881",
+      "password": "88888",
+      "name": "Федорова Елена",
+      "filial": "1",
+      "role": "user",
+      "status": "active"
+    }
+  ]
 }

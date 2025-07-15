@@ -7,17 +7,49 @@ import (
 	"sync"
 )
 
-// JSONUserStorage реализует UserStorage для хранения в JSON файле
+// JSONUserStorage реализует UserStorage для хранения в JSON
 type JSONUserStorage struct {
 	filePath string
 	mu       sync.Mutex
+	users    []models.User // Храним пользователей в slice
 }
 
-// NewUserStorage создает новое хранилище пользователей
-func NewUserStorage(filePath string) UserStorage {
-	return &JSONUserStorage{
-		filePath: filePath,
+// Структура для представления JSON файла
+type usersFile struct {
+	Users []models.User `json:"users"`
+}
+
+// Загружает пользователей из файла
+func (s *JSONUserStorage) loadUsers() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	data, err := os.ReadFile(s.filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			s.users = []models.User{} // Инициализируем пустым slice
+			return nil
+		}
+		return err
 	}
+
+	var file usersFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return err
+	}
+
+	s.users = file.Users
+	return nil
+}
+
+// Сохраняет пользователей в файл
+func (s *JSONUserStorage) saveUsers() error {
+	data, err := json.MarshalIndent(usersFile{Users: s.users}, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(s.filePath, data, 0644)
 }
 
 // CreateUser добавляет нового пользователя
@@ -25,38 +57,37 @@ func (s *JSONUserStorage) CreateUser(user models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	users, err := s.readUsers()
-	if err != nil {
-		return err
+	// Проверяем, нет ли уже пользователя с таким логином
+	for _, u := range s.users {
+		if u.Login == user.Login {
+			return os.ErrExist
+		}
 	}
 
-	users[user.Login] = user
-	return s.writeUsers(users)
+	s.users = append(s.users, user)
+	return s.saveUsers()
 }
 
 // GetUserByLogin возвращает пользователя по логину
 func (s *JSONUserStorage) GetUserByLogin(login string) (models.User, error) {
-	users, err := s.readUsers()
-	if err != nil {
-		return models.User{}, err
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, user := range s.users {
+		if user.Login == login {
+			return user, nil
+		}
 	}
 
-	user, exists := users[login]
-	if !exists {
-		return models.User{}, os.ErrNotExist
-	}
-
-	return user, nil
+	return models.User{}, os.ErrNotExist
 }
 
 // GetUserByID возвращает пользователя по ID
 func (s *JSONUserStorage) GetUserByID(id string) (models.User, error) {
-	users, err := s.readUsers()
-	if err != nil {
-		return models.User{}, err
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	for _, user := range users {
+	for _, user := range s.users {
 		if user.ID == id {
 			return user, nil
 		}
@@ -66,22 +97,18 @@ func (s *JSONUserStorage) GetUserByID(id string) (models.User, error) {
 }
 
 // UpdateUser обновляет данные пользователя
-func (s *JSONUserStorage) UpdateUser(user models.User) error {
+func (s *JSONUserStorage) UpdateUser(updatedUser models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	users, err := s.readUsers()
-	if err != nil {
-		return err
+	for i, user := range s.users {
+		if user.ID == updatedUser.ID {
+			s.users[i] = updatedUser
+			return s.saveUsers()
+		}
 	}
 
-	// Проверяем существование пользователя
-	if _, exists := users[user.Login]; !exists {
-		return os.ErrNotExist
-	}
-
-	users[user.Login] = user
-	return s.writeUsers(users)
+	return os.ErrNotExist
 }
 
 // DeleteUser удаляет пользователя
@@ -89,50 +116,29 @@ func (s *JSONUserStorage) DeleteUser(login string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	users, err := s.readUsers()
-	if err != nil {
-		return err
+	for i, user := range s.users {
+		if user.Login == login {
+			// Удаляем пользователя из slice
+			s.users = append(s.users[:i], s.users[i+1:]...)
+			return s.saveUsers()
+		}
 	}
 
-	delete(users, login)
-	return s.writeUsers(users)
+	return os.ErrNotExist
 }
 
 // GetAllUsers возвращает всех пользователей
-func (s *JSONUserStorage) GetAllUsers() (map[string]models.User, error) {
-	return s.readUsers()
+func (s *JSONUserStorage) GetAllUsers() ([]models.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.users, nil
 }
 
-// readUsers читает пользователей из файла
-func (s *JSONUserStorage) readUsers() (map[string]models.User, error) {
+// SaveAllUsers сохраняет всех пользователей
+func (s *JSONUserStorage) SaveAllUsers(users []models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	data, err := os.ReadFile(s.filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return make(map[string]models.User), nil
-		}
-		return nil, err
-	}
-
-	var users map[string]models.User
-	if err := json.Unmarshal(data, &users); err != nil {
-		return nil, err
-	}
-
-	return users, nil
-}
-
-// writeUsers записывает пользователей в файл
-func (s *JSONUserStorage) writeUsers(users map[string]models.User) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	data, err := json.MarshalIndent(users, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(s.filePath, data, 0644)
+	s.users = users
+	return s.saveUsers()
 }

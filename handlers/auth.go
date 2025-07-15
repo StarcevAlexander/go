@@ -19,76 +19,69 @@ func NewAuthHandler(authService *auth.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	// Получаем пользователя из контекста (который сделал запрос)
-	requester, ok := r.Context().Value("user").(models.User)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Проверяем права доступа
-	switch requester.Role {
-	case models.RoleOwner:
-		// owner может регистрировать всех
-	case models.RoleAdmin, models.RoleHelper:
-		// admin и helper могут регистрировать только в своем филиале
-	default:
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
-
+	// 1. Парсинг входных данных
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Проверяем, что все поля заполнены
+	// 2. Валидация обязательных полей
 	if user.Login == "" || user.Password == "" || user.Name == "" || user.Filial == "" || user.Role == "" {
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
 	}
 
-	// Устанавливаем статус по умолчанию — active ✅
-	user.Status = models.StatusActive
-
-	// Проверяем права на создание пользователя с указанной ролью
-	switch requester.Role {
-	case models.RoleAdmin:
-		if user.Role == models.RoleOwner || user.Role == models.RoleAdmin {
-			http.Error(w, "Admin can't register owners or admins", http.StatusForbidden)
-			return
+	// 3. Если есть авторизованный пользователь - проверяем его права
+	if requester, ok := r.Context().Value("user").(models.User); ok {
+		// Проверка прав доступа для регистрации
+		switch requester.Role {
+		case models.RoleAdmin:
+			if user.Role == models.RoleOwner || user.Role == models.RoleAdmin {
+				http.Error(w, "Admin can't register owners or admins", http.StatusForbidden)
+				return
+			}
+			if user.Filial != requester.Filial {
+				http.Error(w, "Admin can only register users in their own filial", http.StatusForbidden)
+				return
+			}
+		case models.RoleHelper:
+			if user.Role != models.RoleUser {
+				http.Error(w, "Helper can only register users", http.StatusForbidden)
+				return
+			}
+			if user.Filial != requester.Filial {
+				http.Error(w, "Helper can only register users in their own filial", http.StatusForbidden)
+				return
+			}
+		default:
+			// Для других ролей (кроме owner) запрещаем регистрацию
+			if requester.Role != models.RoleOwner {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 		}
-		// Проверяем, что филиал совпадает с филиалом администратора
-		if user.Filial != requester.Filial {
-			http.Error(w, "Admin can only register users in their own filial", http.StatusForbidden)
-			return
-		}
-	case models.RoleHelper:
+	} else {
+		// Если нет авторизованного пользователя - разрешаем регистрацию только обычных пользователей
 		if user.Role != models.RoleUser {
-			http.Error(w, "Helper can only register users", http.StatusForbidden)
-			return
-		}
-		// Проверяем, что филиал совпадает с филиалом помощника
-		if user.Filial != requester.Filial {
-			http.Error(w, "Helper can only register users in their own filial", http.StatusForbidden)
+			http.Error(w, "Only user registration is allowed without authentication", http.StatusForbidden)
 			return
 		}
 	}
 
-	// Проверяем, существует ли пользователь с таким login
-	_, err := h.authService.UserStorage.GetUserByLogin(user.Login)
-	if err == nil {
+	// 4. Проверка уникальности логина
+	if _, err := h.authService.UserStorage.GetUserByLogin(user.Login); err == nil {
 		http.Error(w, "Login already taken", http.StatusConflict)
 		return
 	}
 
-	// Генерируем уникальный ID как текущую миллисекунду
+	// 5. Установка значений по умолчанию
 	user.ID = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	user.Status = models.StatusActive
 
-	// Регистрируем нового пользователя
+	// 6. Создание пользователя
 	if err := h.authService.Register(user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
 
