@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"myapp/dto/dto"
 	"myapp/internal/auth"
@@ -10,6 +11,7 @@ import (
 	"myapp/internal/utils"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -539,7 +541,7 @@ func (h *UserHandler) UpdateUserData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *UserHandler) GetUserList(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	// 1. Получаем текущего пользователя из контекста
 	currentUser, ok := r.Context().Value("user").(models.User)
 	if !ok {
@@ -549,14 +551,17 @@ func (h *UserHandler) GetUserList(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Проверяем, что пользователь — RoleOwner
 	if currentUser.Role != models.RoleOwner {
-		http.Error(w, "Forbidden: only owner can download this file", http.StatusForbidden)
+		http.Error(w, "Forbidden: only owner can download files", http.StatusForbidden)
 		return
 	}
 
-	// 3. Путь к файлу
-	filePath := "storage/jsons/users.json"
+	// 3. Получаем имя файла из URL
+	filename := chi.URLParam(r, "filename")
 
-	// 4. Проверяем существование файла
+	// 4. Определяем путь к файлу
+	filePath := filepath.Join("storage/jsons", filename)
+
+	// 5. Проверяем существование файла
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		http.Error(w, "File not found", http.StatusNotFound)
@@ -566,10 +571,10 @@ func (h *UserHandler) GetUserList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. Настраиваем заголовки для скачивания
+	// 6. Настраиваем заголовки для скачивания
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", "attachment; filename=users.json")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 
-	// 6. Отправляем содержимое файла
+	// 7. Отправляем содержимое файла
 	http.ServeFile(w, r, filePath)
 }

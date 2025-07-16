@@ -40,7 +40,9 @@ func main() {
 		r.Put("/users/{id}", userHandler.UpdateUserData)
 		r.Get("/profile", userHandler.GetProfile)
 		r.Get("/modules", userHandler.GetModules)
-		r.Get("/get-user-list", userHandler.GetUserList)
+
+		//для ручного бэкапа
+		r.Get("/download/{filename}", userHandler.DownloadFile)
 	})
 
 	log.Println("Server starting on :8080")
