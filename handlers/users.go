@@ -186,7 +186,7 @@ func (h *UserHandler) GetModules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ищем профиль текущего пользователя в tutor-data.json
-	tutorDataStorage := storage.NewDataStorage("storage/tutor-data.json")
+	tutorDataStorage := storage.NewDataStorage("storage/jsons/tutor-data.json")
 	tutorRawData, err := tutorDataStorage.LoadData()
 	if err != nil {
 		http.Error(w, "Failed to load tutor data", http.StatusInternalServerError)
@@ -228,8 +228,8 @@ func (h *UserHandler) GetModules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Загружаем все модули из modules-description-links.json
-	moduleStorage := storage.NewDataStorage("storage/jsons/modules-description-links.json")
+	// Загружаем все модули из modules-description.json
+	moduleStorage := storage.NewDataStorage("storage/jsons/modules-description.json")
 	moduleRawData, err := moduleStorage.LoadData()
 	if err != nil {
 		http.Error(w, "Failed to load module data", http.StatusInternalServerError)
@@ -577,4 +577,132 @@ func (h *UserHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 
 	// 7. Отправляем содержимое файла
 	http.ServeFile(w, r, filePath)
+}
+
+func (h *UserHandler) GetModulesById(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем пользователя из контекста
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Проверяем роль
+	switch user.Role {
+	case models.RoleTutor, models.RoleOwner:
+		// Разрешено
+	default:
+		http.Error(w, "Forbidden: only tutors or owners can access this resource", http.StatusForbidden)
+		return
+	}
+
+	// 3. Получаем ID модуля из URL
+	moduleIDStr := chi.URLParam(r, "id")
+	moduleID, err := strconv.Atoi(moduleIDStr)
+	if err != nil {
+		http.Error(w, "Invalid module ID", http.StatusBadRequest)
+		return
+	}
+
+	// 4. Если пользователь — RoleTutor, проверяем его статус и доступ к модулю
+	if user.Role == models.RoleTutor {
+		if user.Status != models.StatusActive {
+			http.Error(w, "Forbidden: tutor is not active", http.StatusForbidden)
+			return
+		}
+
+		// Загружаем tutor-data.json
+		tutorDataStorage := storage.NewDataStorage("storage/jsons/tutor-data.json")
+		tutorRawData, err := tutorDataStorage.LoadData()
+		if err != nil {
+			http.Error(w, "Failed to load tutor data", http.StatusInternalServerError)
+			return
+		}
+
+		var tutors []models.UserData
+		if userDataList, ok := tutorRawData["users"].([]interface{}); ok {
+			for _, u := range userDataList {
+				userMap := u.(map[string]interface{})
+				var userData models.UserData
+				err := json.Unmarshal(utils.ToJSON(userMap), &userData)
+				if err != nil {
+					http.Error(w, "Failed to parse tutor data", http.StatusInternalServerError)
+					return
+				}
+				tutors = append(tutors, userData)
+			}
+		}
+
+		// Конвертируем ID пользователя из string в int
+		userIDInt, err := strconv.Atoi(user.ID)
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusInternalServerError)
+			return
+		}
+
+		// Находим текущего пользователя среди tutors
+		var tutor *models.UserData
+		for _, t := range tutors {
+			if t.ID == userIDInt {
+				tutor = &t
+				break
+			}
+		}
+		if tutor == nil {
+			http.Error(w, "Tutor not found", http.StatusNotFound)
+			return
+		}
+
+		// Проверяем, есть ли доступ к модулю с этим ID
+		now := time.Now().UnixMilli()
+		hasAccess := false
+		for _, info := range tutor.Modules {
+			if info.Module == moduleID && info.Date > now {
+				hasAccess = true
+				break
+			}
+		}
+		if !hasAccess {
+			http.Error(w, "Forbidden: module not available", http.StatusForbidden)
+			return
+		}
+	}
+
+	// 5. Загружаем modules-files.json и ищем файлы для нужного ID
+	moduleFilesStorage := storage.NewDataStorage("storage/jsons/modules-files.json")
+	moduleFilesRawData, err := moduleFilesStorage.LoadData()
+	if err != nil {
+		http.Error(w, "Failed to load module files", http.StatusInternalServerError)
+		return
+	}
+
+	var files []models.FileItem
+
+	if fileGroups, ok := moduleFilesRawData["files"].([]interface{}); ok {
+		for _, fg := range fileGroups {
+			if groupMap, ok := fg.(map[string]interface{}); ok {
+				if groupID, ok := groupMap["ID"].(float64); ok && int(groupID) == moduleID {
+					if fileList, ok := groupMap["Files"].([]interface{}); ok {
+						for _, f := range fileList {
+							if fileMap, ok := f.(map[string]interface{}); ok {
+								title, _ := fileMap["Title"].(string)
+								fileName, _ := fileMap["FileName"].(string)
+								files = append(files, models.FileItem{
+									Title:    title,
+									FileName: fileName,
+								})
+							}
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// 6. Отправляем только список файлов
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(files); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
