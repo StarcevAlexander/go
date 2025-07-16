@@ -9,6 +9,7 @@ import (
 	"myapp/internal/storage"
 	"myapp/internal/utils"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -536,4 +537,39 @@ func (h *UserHandler) UpdateUserData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to write response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *UserHandler) GetUserList(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем текущего пользователя из контекста
+	currentUser, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Проверяем, что пользователь — RoleOwner
+	if currentUser.Role != models.RoleOwner {
+		http.Error(w, "Forbidden: only owner can download this file", http.StatusForbidden)
+		return
+	}
+
+	// 3. Путь к файлу
+	filePath := "storage/jsons/users.json"
+
+	// 4. Проверяем существование файла
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Failed to access file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Настраиваем заголовки для скачивания
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=users.json")
+
+	// 6. Отправляем содержимое файла
+	http.ServeFile(w, r, filePath)
 }

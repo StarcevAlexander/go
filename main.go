@@ -35,13 +35,12 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(authService.AuthMiddleware) // middleware для авторизации
 		//r.Use(auth.WithRoleMiddleware)    // middleware для проверки роли
-
-		// CRUD пользователей
 		r.Get("/users", userHandler.GetAllUsers)
 		r.Get("/users/{id}", userHandler.GetUserData)
 		r.Put("/users/{id}", userHandler.UpdateUserData)
 		r.Get("/profile", userHandler.GetProfile)
 		r.Get("/modules", userHandler.GetModules)
+		r.Get("/get-user-list", userHandler.GetUserList)
 	})
 
 	log.Println("Server starting on :8080")
