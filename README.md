@@ -1,5 +1,12 @@
 для запуска на сервере
 
+IP-адрес:
+194.87.248.145
+Логин к серверу:
+root
+Пароль к серверу:
+qyVRMFU8Zd
+
 apt update && apt upgrade -y
 apt install -y wget curl nano htop
 apt install -y git

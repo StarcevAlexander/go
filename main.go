@@ -26,16 +26,12 @@ func main() {
 
 	// Basic CORS
 	r.Use(cors.Handler(cors.Options{
-		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		//AllowedOrigins: []string{"http://localhost:63343"}, // Allow your frontend origin
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		//AllowCredentials: true,
-		AllowedOrigins:   []string{"*"}, // Разрешаем все origins
-		AllowCredentials: false,         // Должно быть false при использовании "*"
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: false,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
+		MaxAge:           300,
 	}))
 
 	// Промежуточные обработчики (middleware)
