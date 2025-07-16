@@ -2,7 +2,6 @@ package models
 
 type UserData struct {
 	ID      int          `json:"id"`
-	Name    string       `json:"name"`
 	Links   []Link       `json:"links"`
 	Modules []ModuleInfo `json:"modules,omitempty"` // только у тьютора
 }

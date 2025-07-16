@@ -2,7 +2,6 @@
   "users": [
     {
       "id": 1752565715435,
-      "name": "Иван Иванов",
       "links": [
         {
           "url": "https://example.com/profile1",
@@ -16,7 +15,6 @@
     },
     {
       "id": 2222,
-      "name": "Мария Петрова",
       "links": [
         {
           "url": "https://example.com/profile2",
@@ -30,7 +28,6 @@
     },
     {
       "id": 3,
-      "name": "Алексей Сидоров",
       "links": [
         {
           "url": "https://work.example.com/employee3",

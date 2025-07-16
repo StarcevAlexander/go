@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/go-chi/chi/v5"
 	"myapp/dto/dto"
 	"myapp/internal/auth"
 	"myapp/internal/models"
@@ -89,10 +90,6 @@ func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
-}
-
-func (h *UserHandler) UpdateUser(writer http.ResponseWriter, request *http.Request) {
-
 }
 
 func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
@@ -274,10 +271,269 @@ func (h *UserHandler) GetModules(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func convertMapToSlice(usersMap map[string]models.User) []models.User {
-	users := make([]models.User, 0, len(usersMap))
-	for _, user := range usersMap {
-		users = append(users, user)
+func (h *UserHandler) GetUserData(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем текущего пользователя (кто делает запрос)
+	currentUser, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
-	return users
+
+	// 2. Получаем ID запрашиваемого пользователя из URL
+	userID := chi.URLParam(r, "id")
+
+	// 3. Проверяем права доступа к данным этого пользователя
+	allUsers, err := h.authService.UserStorage.GetAllUsers()
+	if err != nil {
+		http.Error(w, "Failed to get users", http.StatusInternalServerError)
+		return
+	}
+
+	// Находим запрашиваемого пользователя
+	var targetUser *models.User
+	for _, u := range allUsers {
+		if u.ID == userID {
+			targetUser = &u
+			break
+		}
+	}
+
+	if targetUser == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Проверяем права доступа
+	switch currentUser.Role {
+	case models.RoleOwner:
+		// Owner может видеть любого
+	case models.RoleAdmin:
+		// Admin только своего филиала (и удалённых)
+		if targetUser.Filial != currentUser.Filial {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	case models.RoleHelper:
+		// Helper только своего филиала, роль User и не удалённых
+		if targetUser.Filial != currentUser.Filial ||
+			targetUser.Role != models.RoleUser ||
+			targetUser.Status == models.StatusDeleted {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	case models.RoleUser:
+		// User не имеет доступа
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	default:
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// 4. Определяем файл с данными в зависимости от роли целевого пользователя
+	var dataFile string
+	switch targetUser.Role {
+	case models.RoleUser:
+		dataFile = "storage/jsons/user-data.json"
+	case models.RoleAdmin, models.RoleOwner:
+		dataFile = "storage/jsons/admin-data.json"
+	case models.RoleTutor:
+		dataFile = "storage/jsons/tutor-data.json"
+	case models.RoleHelper:
+		dataFile = "storage/jsons/helper-data.json"
+	default:
+		http.Error(w, "Unknown user role", http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Загружаем данные из соответствующего файла
+	dataStorage := storage.NewDataStorage(dataFile)
+	data, err := dataStorage.LoadData()
+	if err != nil {
+		http.Error(w, "Failed to load user data", http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Ищем данные конкретного пользователя
+	var usersData []models.UserData
+	if userDataList, ok := data["users"].([]interface{}); ok {
+		for _, u := range userDataList {
+			userMap := u.(map[string]interface{})
+			var userData models.UserData
+			err := json.Unmarshal(utils.ToJSON(userMap), &userData)
+			if err != nil {
+				http.Error(w, "Failed to parse user data", http.StatusInternalServerError)
+				return
+			}
+			usersData = append(usersData, userData)
+		}
+	}
+
+	// Конвертируем ID из string в int для сравнения
+	targetUserID, err := strconv.Atoi(targetUser.ID)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusInternalServerError)
+		return
+	}
+
+	// Находим данные запрашиваемого пользователя
+	var foundUserData *models.UserData
+	for _, ud := range usersData {
+		if ud.ID == targetUserID {
+			foundUserData = &ud
+			break
+		}
+	}
+
+	if foundUserData == nil {
+		http.Error(w, "User data not found", http.StatusNotFound)
+		return
+	}
+
+	// 7. Возвращаем найденные данные
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(foundUserData); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (h *UserHandler) UpdateUserData(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем текущего пользователя
+	currentUser, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Получаем ID обновляемого пользователя
+	userID := chi.URLParam(r, "id")
+
+	// 3. Получаем данные для обновления
+	var updateData struct {
+		Links   []models.Link       `json:"links,omitempty"`
+		Modules []models.ModuleInfo `json:"modules,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// 4. Получаем список всех пользователей, чтобы найти целевого
+	allUsers, err := h.authService.UserStorage.GetAllUsers()
+	if err != nil {
+		http.Error(w, "Failed to get users", http.StatusInternalServerError)
+		return
+	}
+
+	var targetUser *models.User
+	for _, u := range allUsers {
+		if u.ID == userID {
+			targetUser = &u
+			break
+		}
+	}
+	if targetUser == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// 5. Проверяем права доступа
+	switch currentUser.Role {
+	case models.RoleOwner:
+		// Owner может обновлять всех
+	case models.RoleAdmin:
+		if targetUser.Filial != currentUser.Filial {
+			http.Error(w, "Forbidden: can only update users in your filial", http.StatusForbidden)
+			return
+		}
+	case models.RoleHelper:
+		if targetUser.Filial != currentUser.Filial ||
+			targetUser.Role != models.RoleUser ||
+			targetUser.Status == models.StatusDeleted {
+			http.Error(w, "Forbidden: can only update not deleted users in your filial", http.StatusForbidden)
+			return
+		}
+	default:
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// 6. Определяем файл с данными
+	var dataFile string
+	switch targetUser.Role {
+	case models.RoleUser:
+		dataFile = "storage/jsons/user-data.json"
+	case models.RoleAdmin, models.RoleOwner:
+		dataFile = "storage/jsons/admin-data.json"
+	case models.RoleTutor:
+		dataFile = "storage/jsons/tutor-data.json"
+	case models.RoleHelper:
+		dataFile = "storage/jsons/helper-data.json"
+	default:
+		http.Error(w, "Unknown user role", http.StatusInternalServerError)
+		return
+	}
+
+	// 7. Загружаем данные из файла
+	dataStorage := storage.NewDataStorage(dataFile)
+	data, err := dataStorage.LoadData()
+	if err != nil {
+		http.Error(w, "Failed to load user data", http.StatusInternalServerError)
+		return
+	}
+
+	// 8. Обновляем userData
+	var updatedUsers []models.UserData
+	if userDataList, ok := data["users"].([]interface{}); ok {
+		for _, u := range userDataList {
+			userMap := u.(map[string]interface{})
+			var userData models.UserData
+			if err := json.Unmarshal(utils.ToJSON(userMap), &userData); err != nil {
+				http.Error(w, "Failed to parse user data", http.StatusInternalServerError)
+				return
+			}
+
+			// Конвертируем ID для сравнения
+			targetUserID, _ := strconv.Atoi(targetUser.ID)
+			if userData.ID == targetUserID {
+				// Обновляем только те поля, которые есть в UserData
+				userData.Links = updateData.Links
+				userData.Modules = updateData.Modules
+			}
+			updatedUsers = append(updatedUsers, userData)
+		}
+	}
+
+	// 9. Сохраняем обновлённые данные
+	updatedData := map[string]interface{}{
+		"users": updatedUsers,
+	}
+	if err := dataStorage.SaveData(updatedData); err != nil {
+		http.Error(w, "Failed to save updated data", http.StatusInternalServerError)
+		return
+	}
+
+	// 10. Обновляем основные данные пользователя в хранилище
+	result := h.authService.UserStorage.UpdateUserData(*targetUser)
+	if result != nil {
+		if e, ok := result.(error); ok {
+			http.Error(w, "Failed to update user: "+e.Error(), http.StatusInternalServerError)
+			return
+		} else {
+			http.Error(w, "Unexpected error during update", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// 11. Ответ
+	w.WriteHeader(http.StatusOK)
+	response := map[string]string{
+		"message": "User data updated successfully",
+		"user_id": userID,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to write response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

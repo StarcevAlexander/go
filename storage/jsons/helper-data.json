@@ -2,7 +2,6 @@
   "users": [
     {
       "id": 1,
-      "name": "Иван Иванов",
       "links": [
         {
           "url": "https://example.com/profile1",
@@ -15,8 +14,7 @@
       ]
     },
     {
-      "id": 2,
-      "name": "Мария Петрова",
+      "id": 1752565715436,
       "links": [
         {
           "url": "https://example.com/profile2",

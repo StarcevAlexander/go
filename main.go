@@ -38,7 +38,8 @@ func main() {
 
 		// CRUD пользователей
 		r.Get("/users", userHandler.GetAllUsers)
-		//r.Put("/users/{id}", userHandler.UpdateUser) // PUT /users/123
+		r.Get("/users/{id}", userHandler.GetUserData)
+		r.Put("/users/{id}", userHandler.UpdateUserData)
 		r.Get("/profile", userHandler.GetProfile)
 		r.Get("/modules", userHandler.GetModules)
 	})

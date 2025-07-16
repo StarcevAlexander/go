@@ -46,6 +46,7 @@ type UserStorage interface {
 	GetUserByID(id string) (models.User, error)
 	GetAllUsers() ([]models.User, error)
 	SaveAllUsers(users []models.User) error
+	UpdateUserData(user models.User) interface{}
 }
 
 // AuthService предоставляет методы аутентификации
@@ -100,6 +101,19 @@ func (s *JSONUserStorage) GetAllUsers() ([]models.User, error) {
 	return s.users, nil
 }
 
+func (s *JSONUserStorage) GetUserByID(id string) (models.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, user := range s.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+
+	return models.User{}, os.ErrNotExist
+}
+
 // CreateUser создает нового пользователя
 func (s *JSONUserStorage) CreateUser(user models.User) error {
 	s.mu.Lock()
@@ -130,19 +144,6 @@ func (s *JSONUserStorage) GetUserByLogin(login string) (models.User, error) {
 }
 
 // GetUserByID возвращает пользователя по ID
-func (s *JSONUserStorage) GetUserByID(id string) (models.User, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, user := range s.users {
-		if user.ID == id {
-			return user, nil
-		}
-	}
-
-	return models.User{}, os.ErrNotExist
-}
-
 func (s *JSONUserStorage) readUsers() (map[string]models.User, error) {
 	data, err := os.ReadFile(s.filePath)
 	if err != nil {
@@ -154,7 +155,7 @@ func (s *JSONUserStorage) readUsers() (map[string]models.User, error) {
 
 	var users map[string]models.User
 	if err := json.Unmarshal(data, &users); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal user data: %v", err)
 	}
 
 	return users, nil
@@ -304,4 +305,49 @@ func (s *JSONUserStorage) SaveAllUsers(users []models.User) error {
 
 	s.users = users
 	return s.saveUsers()
+}
+
+func (s *JSONUserStorage) UpdateUserData(user models.User) interface{} {
+	// 1. Читаем файл
+	data, err := os.ReadFile(s.filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// 2. Парсим как объект с полем "users"
+	var fileData struct {
+		Users []models.User `json:"users"`
+	}
+
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &fileData); err != nil {
+			return fmt.Errorf("failed to unmarshal user data: %v", err)
+		}
+	}
+
+	// 3. Ищем пользователя и обновляем
+	found := false
+	for i, u := range fileData.Users {
+		if u.ID == user.ID {
+			fileData.Users[i] = user
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("user with ID %s not found", user.ID)
+	}
+
+	// 4. Сохраняем обратно в файл
+	updatedData, err := json.MarshalIndent(fileData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated data: %v", err)
+	}
+
+	if err := os.WriteFile(s.filePath, updatedData, 0644); err != nil {
+		return fmt.Errorf("failed to write updated data: %v", err)
+	}
+
+	return nil
 }
