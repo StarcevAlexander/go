@@ -1,69 +1,65 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"log"
 	"myapp/handlers"
 	"myapp/internal/auth"
 	"net/http"
-	"time"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
-	// Инициализация
+	// Инициализация хранилища
 	userStorage := auth.NewJSONUserStorage("storage/jsons/users.json")
-	authService := auth.NewAuthService(userStorage, []byte("we-will-rock-you"))
-	authHandler := handlers.NewAuthHandler(authService)
 
-	// Настройка роутера
+	// Инициализация сервиса аутентификации
+	authService := auth.NewAuthService(userStorage, []byte("we-will-rock-you"))
+
+	// Создание обработчиков
+	authHandler := handlers.NewAuthHandler(authService)
+	userHandler := handlers.NewUserHandler(authService)
+
+	// Создаем маршрутизатор chi
 	r := chi.NewRouter()
 
-	// Базовые middleware
+	// Basic CORS
+	r.Use(cors.Handler(cors.Options{
+		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
+		//AllowedOrigins: []string{"http://localhost:63343"}, // Allow your frontend origin
+		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		//AllowCredentials: true,
+		AllowedOrigins:   []string{"*"}, // Разрешаем все origins
+		AllowCredentials: false,         // Должно быть false при использовании "*"
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+
+	// Промежуточные обработчики (middleware)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
 
-	// Кастомный CORS middleware
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Устанавливаем CORS заголовки
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
-			w.Header().Set("Access-Control-Expose-Headers", "Link")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Max-Age", "300")
-
-			// Если это OPTIONS запрос - сразу отвечаем 200
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	})
-
-	// Публичные маршруты
+	// Публичные маршруты (без авторизации)
 	r.Post("/login", authHandler.Login)
 	r.Post("/register", authHandler.Register)
 
-	// Защищенные маршруты
+	// Защищённые маршруты (требуют авторизации)
 	r.Group(func(r chi.Router) {
-		r.Use(authService.AuthMiddleware)
+		r.Use(authService.AuthMiddleware) // middleware для авторизации
+		//r.Use(auth.WithRoleMiddleware)    // middleware для проверки роли
+		r.Get("/users", userHandler.GetAllUsers)
+		r.Get("/users/{id}", userHandler.GetUserData)
+		r.Put("/users/{id}", userHandler.UpdateUserData)
+		r.Get("/profile", userHandler.GetProfile)
+		r.Get("/modules", userHandler.GetModules)
 
-		r.Get("/download/tutor-data.json", func(w http.ResponseWriter, r *http.Request) {
-			// Ваша логика для выдачи файла
-			w.Header().Set("Content-Type", "application/json")
-			http.ServeFile(w, r, "path/to/tutor-data.json")
-		})
-
-		// Другие защищенные маршруты...
+		//для ручного бэкапа
+		r.Get("/download/{filename}", userHandler.DownloadFile)
 	})
 
-	// Запуск сервера
 	log.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
