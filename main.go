@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"log"
 	"myapp/handlers"
 	"myapp/internal/auth"
@@ -23,7 +24,25 @@ func main() {
 	// Создаем маршрутизатор chi
 	r := chi.NewRouter()
 
-	// Промежуточные обработчики (middleware)
+	// Настройка CORS middleware
+	r.Use(cors.Handler(cors.Options{
+		// Разрешенные origins (можно указать конкретные домены или "*" для всех)
+		AllowedOrigins: []string{"*"}, // Или например: []string{"http://localhost:3000"}
+
+		// Разрешенные HTTP методы
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+
+		// Разрешенные заголовки
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+
+		// Разрешить передачу cookies (если нужно)
+		AllowCredentials: false,
+
+		// Максимальное время кеширования preflight запросов
+		MaxAge: 300, // 5 минут
+	}))
+
+	// Другие промежуточные обработчики (middleware)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -33,15 +52,12 @@ func main() {
 
 	// Защищённые маршруты (требуют авторизации)
 	r.Group(func(r chi.Router) {
-		r.Use(authService.AuthMiddleware) // middleware для авторизации
-		//r.Use(auth.WithRoleMiddleware)    // middleware для проверки роли
+		r.Use(authService.AuthMiddleware)
 		r.Get("/users", userHandler.GetAllUsers)
 		r.Get("/users/{id}", userHandler.GetUserData)
 		r.Put("/users/{id}", userHandler.UpdateUserData)
 		r.Get("/profile", userHandler.GetProfile)
 		r.Get("/modules", userHandler.GetModules)
-
-		//для ручного бэкапа
 		r.Get("/download/{filename}", userHandler.DownloadFile)
 	})
 
