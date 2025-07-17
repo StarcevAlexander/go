@@ -4,21 +4,12 @@
       "ID": 5,
       "Files": [
         {
-          "Title": "Лекция 1",
-          "FileName": "module1_lecture.pdf"
+          "Title": "Урок 1",
+          "FileName": "CapCut_1"
         },
         {
           "Title": "Практика 1",
-          "FileName": "module1_practice.zip"
-        }
-      ]
-    },
-    {
-      "ID": 2,
-      "Files": [
-        {
-          "Title": "Лекция 2",
-          "FileName": "module2_lecture.pdf"
+          "FileName": "module1_practice"
         }
       ]
     }

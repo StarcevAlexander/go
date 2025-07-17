@@ -706,3 +706,50 @@ func (h *UserHandler) GetModulesById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
+
+func (h *UserHandler) GetFile(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем пользователя из контекста
+	user, ok := r.Context().Value("user").(models.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Проверяем роль пользователя
+	switch user.Role {
+	case models.RoleTutor, models.RoleOwner:
+		// Разрешено
+	default:
+		http.Error(w, "Forbidden: only tutors or owners can access this resource", http.StatusForbidden)
+		return
+	}
+
+	// 3. Получаем имя файла из URL
+	fileName := chi.URLParam(r, "filename")
+	if fileName == "" {
+		http.Error(w, "Missing 'filename' in URL", http.StatusBadRequest)
+		return
+	}
+
+	// 4. Строим путь к PDF-файлу (меняем расширение на .pdf)
+	filePath := filepath.Join("storage/files", fileName+".pdf")
+
+	// 5. Проверяем существование файла
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		http.Error(w, "PDF file not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Error accessing file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Устанавливаем защитные заголовки
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", "inline; filename=\"presentation.pdf\"")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	// 7. Отправляем файл
+	http.ServeFile(w, r, filePath)
+}

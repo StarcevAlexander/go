@@ -52,6 +52,7 @@ func main() {
 		r.Get("/profile", userHandler.GetProfile)
 		r.Get("/modules", userHandler.GetModules)
 		r.Get("/modules/{id}", userHandler.GetModulesById)
+		r.Get("/files/{filename}", userHandler.GetFile)
 
 		//для ручного бэкапа
 		r.Get("/download/{filename}", userHandler.DownloadFile)
